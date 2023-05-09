@@ -8,12 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ImpressionableRaccoon/GophKeeper/internal/grpc/keeper"
-	"github.com/ImpressionableRaccoon/GophKeeper/internal/storage"
-	pb "github.com/ImpressionableRaccoon/GophKeeper/proto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+
+	"github.com/ImpressionableRaccoon/GophKeeper/internal/grpc/keeper"
+	"github.com/ImpressionableRaccoon/GophKeeper/internal/storage"
+	pb "github.com/ImpressionableRaccoon/GophKeeper/proto"
 )
 
 var logger *zap.Logger
