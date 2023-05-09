@@ -8,7 +8,9 @@ GophKeeper представляет собой клиент-серверную �
 позволяющую пользователю надёжно и безопасно хранить логины,
 пароли, бинарные данные и прочую приватную информацию.
 
-### Сервисная часть
+![](./gophkeeper.png)
+
+### Серверная часть
 
 На сервере все записи хранятся в одной таблице:
 
@@ -55,7 +57,7 @@ CREATE TABLE entries
 приватного ключа все равно расшифровать не получится.
 
 ```protobuf
-rpc Get(GetRequest) returns (GetResponse);
+//rpc Get(GetRequest) returns (GetResponse);
 
 message GetRequest {
   string id = 1;
@@ -71,7 +73,7 @@ message GetResponse {
 Получаем записи пользователя по его публичному ключу.
 
 ```protobuf
-rpc GetAll(GetAllRequest) returns (GetAllResponse);
+//rpc GetAll(GetAllRequest) returns (GetAllResponse);
 
 message GetAllRequest {
   bytes public_key = 1;
@@ -93,7 +95,7 @@ message GetAllResponse {
 Подписать нужно хеш данных, которые сохраняем ```SHA256(data)```.
 
 ```protobuf
-rpc Create(CreateRequest) returns (CreateResponse);
+//rpc Create(CreateRequest) returns (CreateResponse);
 
 message CreateRequest {
   bytes public_key = 1;
@@ -115,7 +117,7 @@ message CreateResponse {
 злоумышленник не мог ее удалить.
 
 ```protobuf
-rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
+//rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
 
 message DeleteRequest {
   string id = 1;
