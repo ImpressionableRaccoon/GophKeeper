@@ -4,14 +4,18 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // postgres init for golang-migrate
-	_ "github.com/golang-migrate/migrate/v4/source/file"       // file init for golang-migrate
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
 )
+
+//go:embed migrations
+var migrationsFS embed.FS
 
 var ErrNotFound = errors.New("entry not found")
 
@@ -124,7 +128,12 @@ func (s *ServerStorage) Close() error {
 }
 
 func (s *ServerStorage) doMigrate(dsn string) error {
-	m, err := migrate.New("file://migrations/server/postgres", dsn)
+	d, err := iofs.New(migrationsFS, "migrations/server")
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
 	if err != nil {
 		return err
 	}
