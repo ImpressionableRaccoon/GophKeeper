@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/ImpressionableRaccoon/GophKeeper/internal/grpc/keeper"
 	"github.com/ImpressionableRaccoon/GophKeeper/internal/storage"
@@ -33,9 +35,13 @@ func main() {
 
 	serverAddress := ""
 	dsn := ""
+	tlsCert := ""
+	tlsKey := ""
 
 	flag.StringVar(&serverAddress, "a", ":3200", "server address")
 	flag.StringVar(&dsn, "d", "", "postgres dsn")
+	flag.StringVar(&tlsCert, "c", "", "TLS server cert path")
+	flag.StringVar(&tlsKey, "k", "", "TLS server key path")
 	flag.Parse()
 
 	if serverAddress == "" || dsn == "" {
@@ -46,7 +52,20 @@ func main() {
 	logger.Info("configuration",
 		zap.String("serverAddress", serverAddress),
 		zap.String("dsn", dsn),
+		zap.String("tlsCert", tlsCert),
+		zap.String("tlsKey", tlsKey),
 	)
+
+	var tlsCredentials credentials.TransportCredentials
+	if tlsCert == "" || tlsKey == "" {
+		logger.Warn("TLS certificates is empty, use it for security!")
+	} else {
+		var err error
+		tlsCredentials, err = loadTLSCredentials(tlsCert, tlsKey)
+		if err != nil {
+			panic(fmt.Errorf("cannot load TLS credentials: %w", err))
+		}
+	}
 
 	s, err := storage.NewServerStorage(dsn)
 	if err != nil {
@@ -66,7 +85,15 @@ func main() {
 		panic(fmt.Errorf("error listen server address: %w", err))
 	}
 
-	g := grpc.NewServer()
+	var g *grpc.Server
+	if tlsCredentials != nil {
+		g = grpc.NewServer(
+			grpc.Creds(tlsCredentials),
+		)
+	} else {
+		g = grpc.NewServer()
+	}
+
 	pb.RegisterKeeperServer(g, keeper.NewServer(s))
 	go func() {
 		logger.Info("starting server")
@@ -80,4 +107,19 @@ func main() {
 
 	g.GracefulStop()
 	logger.Info("grpc server stopped")
+}
+
+func loadTLSCredentials(cert, key string) (credentials.TransportCredentials, error) {
+	serverCert, err := tls.LoadX509KeyPair(cert, key)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+
+	return credentials.NewTLS(config), nil
 }
