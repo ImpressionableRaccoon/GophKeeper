@@ -19,10 +19,12 @@ import (
 	pb "github.com/ImpressionableRaccoon/GophKeeper/proto"
 )
 
-var logger *zap.Logger
+var (
+	logger *zap.Logger
+	err    error
+)
 
 func init() {
-	var err error
 	logger, err = zap.NewProduction(zap.AddStacktrace(zapcore.PanicLevel))
 	if err != nil {
 		panic(fmt.Errorf("error create logger: %w", err))
@@ -33,10 +35,12 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer cancel()
 
-	serverAddress := ""
-	dsn := ""
-	tlsCert := ""
-	tlsKey := ""
+	var (
+		serverAddress string
+		dsn           string
+		tlsCert       string
+		tlsKey        string
+	)
 
 	flag.StringVar(&serverAddress, "a", ":3200", "server address")
 	flag.StringVar(&dsn, "d", "", "postgres dsn")
@@ -60,16 +64,16 @@ func main() {
 	if tlsCert == "" || tlsKey == "" {
 		logger.Warn("TLS certificates is empty, use it for security!")
 	} else {
-		var err error
 		tlsCredentials, err = loadTLSCredentials(tlsCert, tlsKey)
 		if err != nil {
-			panic(fmt.Errorf("cannot load TLS credentials: %w", err))
+			logger.Panic("cannot load TLS credentials", zap.Error(err))
 		}
 	}
 
-	s, err := storage.NewServerStorage(dsn)
+	var s *storage.ServerStorage
+	s, err = storage.NewServerStorage(dsn)
 	if err != nil {
-		panic(fmt.Errorf("error create server storage: %w", err))
+		logger.Panic("error create server storage", zap.Error(err))
 	}
 	defer func() {
 		closeErr := s.Close()
@@ -80,9 +84,10 @@ func main() {
 		logger.Info("storage closed")
 	}()
 
-	ln, err := net.Listen("tcp", serverAddress)
+	var ln net.Listener
+	ln, err = net.Listen("tcp", serverAddress)
 	if err != nil {
-		panic(fmt.Errorf("error listen server address: %w", err))
+		logger.Panic("error listen server address", zap.Error(err))
 	}
 
 	var g *grpc.Server
@@ -97,8 +102,9 @@ func main() {
 	pb.RegisterKeeperServer(g, keeper.NewServer(s))
 	go func() {
 		logger.Info("starting server")
-		if g.Serve(ln) != nil {
-			panic(err)
+		serverErr := g.Serve(ln)
+		if serverErr != nil {
+			logger.Panic("grpc server failed", zap.Error(serverErr))
 		}
 	}()
 
@@ -110,7 +116,8 @@ func main() {
 }
 
 func loadTLSCredentials(cert, key string) (credentials.TransportCredentials, error) {
-	serverCert, err := tls.LoadX509KeyPair(cert, key)
+	var serverCert tls.Certificate
+	serverCert, err = tls.LoadX509KeyPair(cert, key)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ module github.com/ImpressionableRaccoon/GophKeeper
 go 1.20
 
 require (
+	github.com/chzyer/readline v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
 	go.uber.org/zap v1.24.0

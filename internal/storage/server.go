@@ -1,4 +1,4 @@
-// Package storage содержит хранилища для клиентов и серверов.
+// Package storage содержит хранилище для сервера.
 package storage
 
 import (
@@ -17,6 +17,7 @@ import (
 //go:embed migrations
 var migrationsFS embed.FS
 
+// ErrNotFound - запись не найдена.
 var ErrNotFound = errors.New("entry not found")
 
 type entry struct {

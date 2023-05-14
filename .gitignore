@@ -23,3 +23,6 @@ go.work
 
 # macOS attributes
 .DS_Store
+
+# Certificate files
+*.pem
