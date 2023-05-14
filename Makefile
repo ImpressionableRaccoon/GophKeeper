@@ -6,8 +6,16 @@ genCert:
 	cd cert && ./gen.sh
 
 client:
-	go build -o keeperClient -ldflags '\
+	cd cmd/client && go build -o ../../keeperClient -ldflags '\
 		-X "main.buildVersion=${version}"\
 		-X "main.buildDate=${date}"\
-		-X "main.buildCommit=${commit}"' \
-	  cmd/client/main.go
+		-X "main.buildCommit=${commit}"'
+
+server:
+	cd cmd/server && go build -o ../../keeperServer
+
+test:
+	go test ./...
+
+lint:
+	golangci-lint run
