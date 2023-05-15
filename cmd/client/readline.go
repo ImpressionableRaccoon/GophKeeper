@@ -6,6 +6,8 @@ import (
 	"github.com/chzyer/readline"
 )
 
+const defaultPrompt = "\033[31m»\033[0m "
+
 var (
 	l    *readline.Instance
 	line string
@@ -20,7 +22,7 @@ var completer = readline.NewPrefixCompleter(
 )
 
 var readlineCfg = &readline.Config{
-	Prompt:          "\033[31m»\033[0m ",
+	Prompt:          defaultPrompt,
 	AutoComplete:    completer,
 	InterruptPrompt: "^C",
 	EOFPrompt:       "exit",

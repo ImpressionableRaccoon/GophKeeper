@@ -9,6 +9,7 @@ import (
 	pb "github.com/ImpressionableRaccoon/GophKeeper/proto"
 )
 
+// Client - клиент для взаимодействия с сервером.
 type Client struct {
 	conn *grpc.ClientConn
 	pb.KeeperClient

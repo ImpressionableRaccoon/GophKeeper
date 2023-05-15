@@ -34,6 +34,7 @@ func init() {
 	config.Encoding = "console"
 	config.EncoderConfig.TimeKey = ""
 	config.EncoderConfig.CallerKey = ""
+	config.DisableStacktrace = true
 
 	logger, err = config.Build()
 	if err != nil {
@@ -82,14 +83,13 @@ func main() {
 		}()
 	}
 
+	l, err = readline.NewEx(readlineCfg)
+
 	if keyPath == "" {
-		l, err = readline.NewEx(&readline.Config{Prompt: "Are you want to generate a new key [Y/n]: "})
-		if err != nil {
-			logger.Panic("init readline failed", zap.Error(err))
-		}
+		l.SetPrompt("Are you want to generate a new key [Y/n]: ")
 
 		line, err = l.Readline()
-		if err != nil || (err == nil && line != "Y" && line != "") {
+		if err != nil || (err == nil && strings.ToLower(line) != "y" && line != "") {
 			logger.Info("Use flag -k to specify RSA key file path")
 			return
 		}
@@ -130,11 +130,13 @@ func main() {
 		}
 	}()
 
-	work(s)
+	work(ctx, s)
 }
 
-func work(s *service.Service) {
+func work(ctx context.Context, s *service.Service) {
 	for {
+		l.SetPrompt(defaultPrompt)
+
 		line, err = l.Readline()
 		if err != nil {
 			break
@@ -146,38 +148,38 @@ func work(s *service.Service) {
 		case line == "get":
 			_, _ = fmt.Fprintln(l.Stderr(), "Usage: get {id}")
 		case strings.HasPrefix(line, "get "):
-			resp, err = s.Get(line[4:])
+			resp, err = s.Get(ctx, line[4:])
 			if err != nil {
 				logger.Error("get method returned an error", zap.Error(err))
 				continue
 			}
-			_, _ = fmt.Fprintln(l.Stderr(), resp)
+			_, _ = fmt.Fprintln(l.Stderr(), strings.TrimSpace(resp))
 		case line == "add":
 			_, _ = fmt.Fprint(l.Stderr(), "Usage: add {type}\n\n")
 			_, _ = fmt.Fprintln(l.Stderr(), dataverse.Description)
 		case strings.HasPrefix(line, "add "):
-			resp, err = s.Add(line[4:])
+			resp, err = s.Add(ctx, line[4:], l)
 			if err != nil {
 				logger.Error("add method returned an error", zap.Error(err))
 				continue
 			}
-			_, _ = fmt.Fprintln(l.Stderr(), resp)
+			_, _ = fmt.Fprintln(l.Stderr(), strings.TrimSpace(resp))
 		case line == "all":
-			resp, err = s.All()
+			resp, err = s.All(ctx)
 			if err != nil {
 				logger.Error("all method returned an error", zap.Error(err))
 				continue
 			}
-			_, _ = fmt.Fprintln(l.Stderr(), resp)
+			_, _ = fmt.Fprintln(l.Stderr(), strings.TrimSpace(resp))
 		case line == "delete":
 			_, _ = fmt.Fprintln(l.Stderr(), "Usage: delete {id}")
 		case strings.HasPrefix(line, "delete "):
-			resp, err = s.Delete(line[7:])
+			resp, err = s.Delete(ctx, line[7:])
 			if err != nil {
 				logger.Error("delete method returned an error", zap.Error(err))
 				continue
 			}
-			_, _ = fmt.Fprintln(l.Stderr(), resp)
+			_, _ = fmt.Fprintln(l.Stderr(), strings.TrimSpace(resp))
 		default:
 			usage(l.Stderr())
 		}
