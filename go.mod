@@ -6,6 +6,7 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.5
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0

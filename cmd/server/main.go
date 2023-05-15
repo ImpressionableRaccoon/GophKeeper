@@ -9,11 +9,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/ImpressionableRaccoon/GophKeeper/internal/grpc/interceptor"
 	"github.com/ImpressionableRaccoon/GophKeeper/internal/grpc/keeper"
 	"github.com/ImpressionableRaccoon/GophKeeper/internal/storage"
 	pb "github.com/ImpressionableRaccoon/GophKeeper/proto"
@@ -94,6 +96,15 @@ func main() {
 	if tlsCredentials != nil {
 		g = grpc.NewServer(
 			grpc.Creds(tlsCredentials),
+			grpc.ChainUnaryInterceptor(
+				logging.UnaryServerInterceptor(
+					interceptor.Logger(logger),
+					logging.WithLogOnEvents(
+						logging.StartCall,
+						logging.FinishCall,
+					),
+				),
+			),
 		)
 	} else {
 		g = grpc.NewServer()
