@@ -47,7 +47,7 @@ func ParseEntry(data []byte) (Entry, error) {
 	var e DatabaseEntry
 	err := json.Unmarshal(data, &e)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dataverse ParseEntry: json unmarshal: %w", err)
 	}
 
 	switch entryType(e.Type) {
@@ -61,7 +61,7 @@ func ParseEntry(data []byte) (Entry, error) {
 		return newBinary(e.Data)
 	}
 
-	return nil, errors.New("unknown entry type")
+	return nil, errors.New("dataverse ParseEntry: unknown entry type")
 }
 
 // GenDatabaseEntry - собирает разные типы, запрашивая у пользователя данные.
@@ -78,16 +78,16 @@ func GenDatabaseEntry(t string, l *readline.Instance) (_ DatabaseEntry, err erro
 	case binaryEntry:
 		e, err = genBinary(l)
 	default:
-		return DatabaseEntry{}, errors.New("wrong entry type")
+		return DatabaseEntry{}, errors.New("dataverse DatabaseEntry: wrong entry type")
 	}
 	if err != nil {
-		return DatabaseEntry{}, err
+		return DatabaseEntry{}, fmt.Errorf("dataverse DatabaseEntry: generate: %w", err)
 	}
 
 	var data []byte
 	data, err = e.Marshal()
 	if err != nil {
-		return DatabaseEntry{}, err
+		return DatabaseEntry{}, fmt.Errorf("dataverse DatabaseEntry: marshal: %w", err)
 	}
 
 	return DatabaseEntry{
@@ -109,14 +109,14 @@ func genText(l *readline.Instance) (d textData, err error) {
 	l.SetPrompt("Name: ")
 	d.Name, err = l.Readline()
 	if err != nil {
-		return textData{}, err
+		return textData{}, fmt.Errorf("dataverse genText: readline: %w", err)
 	}
 	d.Name = strings.TrimSpace(d.Name)
 
 	l.SetPrompt("Content: ")
 	d.Content, err = l.Readline()
 	if err != nil {
-		return textData{}, err
+		return textData{}, fmt.Errorf("dataverse genText: readline: %w", err)
 	}
 	d.Content = strings.TrimSpace(d.Content)
 
@@ -155,21 +155,21 @@ func genAuth(l *readline.Instance) (d authData, err error) {
 	l.SetPrompt("Name: ")
 	d.Name, err = l.Readline()
 	if err != nil {
-		return authData{}, err
+		return authData{}, fmt.Errorf("dataverse genAuth: readline: %w", err)
 	}
 	d.Name = strings.TrimSpace(d.Name)
 
 	l.SetPrompt("Username: ")
 	d.Username, err = l.Readline()
 	if err != nil {
-		return authData{}, err
+		return authData{}, fmt.Errorf("dataverse genAuth: readline: %w", err)
 	}
 	d.Username = strings.TrimSpace(d.Username)
 
 	l.SetPrompt("Password: ")
 	d.Password, err = l.Readline()
 	if err != nil {
-		return authData{}, err
+		return authData{}, fmt.Errorf("dataverse genAuth: readline: %w", err)
 	}
 	d.Password = strings.TrimSpace(d.Password)
 
@@ -213,35 +213,35 @@ func genCard(l *readline.Instance) (d cardData, err error) {
 	l.SetPrompt("Name: ")
 	d.Name, err = l.Readline()
 	if err != nil {
-		return cardData{}, err
+		return cardData{}, fmt.Errorf("dataverse genCard: readline: %w", err)
 	}
 	d.Name = strings.TrimSpace(d.Name)
 
 	l.SetPrompt("Number: ")
 	d.Number, err = l.Readline()
 	if err != nil {
-		return cardData{}, err
+		return cardData{}, fmt.Errorf("dataverse genCard: readline: %w", err)
 	}
 	d.Number = strings.TrimSpace(d.Number)
 
 	l.SetPrompt("Date: ")
 	d.Date, err = l.Readline()
 	if err != nil {
-		return cardData{}, err
+		return cardData{}, fmt.Errorf("dataverse genCard: readline: %w", err)
 	}
 	d.Date = strings.TrimSpace(d.Date)
 
 	l.SetPrompt("CVC: ")
 	d.CVC, err = l.Readline()
 	if err != nil {
-		return cardData{}, err
+		return cardData{}, fmt.Errorf("dataverse genCard: readline: %w", err)
 	}
 	d.CVC = strings.TrimSpace(d.CVC)
 
 	l.SetPrompt("Holder: ")
 	d.Holder, err = l.Readline()
 	if err != nil {
-		return cardData{}, err
+		return cardData{}, fmt.Errorf("dataverse genCard: readline: %w", err)
 	}
 	d.Holder = strings.TrimSpace(d.Holder)
 
@@ -285,20 +285,20 @@ func genBinary(l *readline.Instance) (d binaryData, err error) {
 	l.SetPrompt("Name: ")
 	d.Name, err = l.Readline()
 	if err != nil {
-		return binaryData{}, err
+		return binaryData{}, fmt.Errorf("dataverse genBinary: readline: %w", err)
 	}
 	d.Name = strings.TrimSpace(d.Name)
 
 	l.SetPrompt("Filename: ")
 	d.Filename, err = l.Readline()
 	if err != nil {
-		return binaryData{}, err
+		return binaryData{}, fmt.Errorf("dataverse genBinary: readline: %w", err)
 	}
 	d.Filename = strings.TrimSpace(d.Filename)
 
 	d.Content, err = os.ReadFile(d.Filename)
 	if err != nil {
-		return binaryData{}, err
+		return binaryData{}, fmt.Errorf("dataverse genBinary: readline: %w", err)
 	}
 
 	return d, nil

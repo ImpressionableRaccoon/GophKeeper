@@ -20,12 +20,12 @@ const (
 // GenRSAKey генерирует и сохраняет RSA-ключ в pem-файл.
 func GenRSAKey(ctx context.Context) (_ *rsa.PrivateKey, fileName string, _ error) {
 	if err := ctx.Err(); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("rsa GenRSAKey: context: %w", err)
 	}
 
 	key, err := rsa.GenerateKey(rand.Reader, keySize)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("rsa GenRSAKey: generate key: %w", err)
 	}
 
 	bytes := x509.MarshalPKCS1PrivateKey(key)
@@ -39,13 +39,13 @@ func GenRSAKey(ctx context.Context) (_ *rsa.PrivateKey, fileName string, _ error
 
 	pemFile, err := os.Create(fileName)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("rsa GenRSAKey: create file: %w", err)
 	}
 	defer func() { _ = pemFile.Close() }()
 
 	err = pem.Encode(pemFile, privateKeyPEM)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("rsa GenRSAKey: encode: %w", err)
 	}
 
 	return key, fileName, nil
@@ -54,23 +54,23 @@ func GenRSAKey(ctx context.Context) (_ *rsa.PrivateKey, fileName string, _ error
 // LoadRSAKey загружает RSA ключ из pem-файла.
 func LoadRSAKey(ctx context.Context, keyPath string) (*rsa.PrivateKey, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rsa LoadRSAKey: context: %w", err)
 	}
 
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rsa LoadRSAKey: read file: %w", err)
 	}
 
 	block, _ := pem.Decode(keyBytes)
 	if block == nil || block.Type != keyType {
-		return nil, errors.New("wrong block format")
+		return nil, errors.New("rsa LoadRSAKey: decode: wrong block format")
 	}
 
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rsa LoadRSAKey: parse key: %w", err)
 	}
 
-	return key, err
+	return key, nil
 }

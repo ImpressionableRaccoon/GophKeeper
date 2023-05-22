@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"crypto/tls"
+	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -27,7 +28,7 @@ func NewClient(serverAddress string) (*Client, error) {
 	var err error
 	c.conn, err = grpc.Dial(serverAddress, grpc.WithTransportCredentials(credentials.NewTLS(config)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("grpc keeper NewClient: dial: %w", err)
 	}
 
 	c.KeeperClient = pb.NewKeeperClient(c.conn)
@@ -37,5 +38,10 @@ func NewClient(serverAddress string) (*Client, error) {
 
 // Close - закрываем соединение с сервером.
 func (s *Client) Close() error {
-	return s.conn.Close()
+	err := s.conn.Close()
+	if err != nil {
+		return fmt.Errorf("grpc keeper Client close: %w", err)
+	}
+
+	return nil
 }

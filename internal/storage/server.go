@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -38,12 +39,12 @@ func NewServerStorage(dsn string) (*ServerStorage, error) {
 	var err error
 	s.db, err = sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("storage NewServerStorage: sql open error: %w", err)
 	}
 
 	err = s.doMigrate(dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("storage NewServerStorage: migrate error: %w", err)
 	}
 
 	return s, nil
@@ -61,10 +62,10 @@ func (s *ServerStorage) Get(ctx context.Context, id uuid.UUID) (e entry, err err
 	row := s.db.QueryRowContext(ctx, `SELECT public_key, payload FROM entries WHERE id = $1`, id)
 	err = row.Scan(&e.PublicKey, &e.Payload)
 	if errors.Is(err, sql.ErrNoRows) {
-		return entry{}, ErrNotFound
+		return entry{}, fmt.Errorf("ServerStorage Get: query row: %w", ErrNotFound)
 	}
 	if err != nil {
-		return entry{}, err
+		return entry{}, fmt.Errorf("ServerStorage Get: query row: %w", err)
 	}
 
 	return e, nil
@@ -77,10 +78,10 @@ func (s *ServerStorage) GetAll(ctx context.Context, publicKey []byte) ([]entry, 
 
 	rows, err := s.db.QueryContext(ctx, `SELECT id, payload FROM entries WHERE public_key = $1`, publicKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ServerStorage GetAll: query: %w", err)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ServerStorage GetAll: query rows: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -89,7 +90,7 @@ func (s *ServerStorage) GetAll(ctx context.Context, publicKey []byte) ([]entry, 
 		e := entry{}
 		err = rows.Scan(&e.ID, &e.Payload)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ServerStorage GetAll: query rows scan: %w", err)
 		}
 		entries = append(entries, e)
 	}
@@ -108,7 +109,7 @@ func (s *ServerStorage) Create(ctx context.Context, publicKey []byte, data []byt
 	)
 	err = row.Scan(&id)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("ServerStorage Create: query row scan: %w", err)
 	}
 
 	return id, nil
@@ -120,29 +121,41 @@ func (s *ServerStorage) Delete(ctx context.Context, id uuid.UUID) error {
 	defer cancel()
 
 	_, err := s.db.ExecContext(ctx, `DELETE FROM entries WHERE id = $1`, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("ServerStorage Delete: exec: %w", err)
+	}
+
+	return nil
 }
 
 // Close - закрываем соединение с базой данных.
 func (s *ServerStorage) Close() error {
-	return s.db.Close()
+	err := s.db.Close()
+	if err != nil {
+		return fmt.Errorf("ServerStorage Close: %w", err)
+	}
+
+	return nil
 }
 
 func (s *ServerStorage) doMigrate(dsn string) error {
 	d, err := iofs.New(migrationsFS, "migrations/server")
 	if err != nil {
-		return err
+		return fmt.Errorf("ServerStorage doMigrate: iofs: %w", err)
 	}
 
 	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
 	if err != nil {
-		return err
+		return fmt.Errorf("ServerStorage doMigrate: new migrate: %w", err)
 	}
 
 	err = m.Up()
 	if errors.Is(err, migrate.ErrNoChange) {
 		return nil
 	}
+	if err != nil {
+		return fmt.Errorf("ServerStorage doMigrate: migrate up: %w", err)
+	}
 
-	return err
+	return nil
 }

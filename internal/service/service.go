@@ -35,24 +35,24 @@ func New(client *keeper.Client, key *rsa.PrivateKey) (*Service, error) {
 // Get - получить запись по ID.
 func (s Service) Get(ctx context.Context, id string) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Get: context: %w", err)
 	}
 
 	resp, err := s.c.Get(ctx, &pb.GetRequest{
 		Id: id,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Get: client: %w", err)
 	}
 
 	decrypted, err := rsa.DecryptPKCS1v15(rand.Reader, s.key, resp.Data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Get: decrypt: %w", err)
 	}
 
 	e, err := dataverse.ParseEntry(decrypted)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Get: parse entry: %w", err)
 	}
 
 	b := strings.Builder{}
@@ -66,31 +66,31 @@ func (s Service) Get(ctx context.Context, id string) (string, error) {
 // Add - добавить новую запись.
 func (s Service) Add(ctx context.Context, line string, l *readline.Instance) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: context: %w", err)
 	}
 
 	t := strings.TrimSpace(line)
 
 	e, err := dataverse.GenDatabaseEntry(t, l)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: gen entry: %w", err)
 	}
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: marshal json: %w", err)
 	}
 
 	encrypted, err := rsa.EncryptPKCS1v15(rand.Reader, &s.key.PublicKey, data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: encrypt: %w", err)
 	}
 
 	hash := sha256.Sum256(encrypted)
 
 	sign, err := rsa.SignPKCS1v15(rand.Reader, s.key, crypto.SHA256, hash[:])
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: sign: %w", err)
 	}
 
 	resp, err := s.c.Create(ctx, &pb.CreateRequest{
@@ -99,7 +99,7 @@ func (s Service) Add(ctx context.Context, line string, l *readline.Instance) (st
 		Sign:      sign,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Add: client: %w", err)
 	}
 
 	return fmt.Sprintf("Entry ID: %s", resp.Id), nil
@@ -108,14 +108,14 @@ func (s Service) Add(ctx context.Context, line string, l *readline.Instance) (st
 // All - получить все записи пользователя.
 func (s Service) All(ctx context.Context) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service All: context: %w", err)
 	}
 
 	resp, err := s.c.GetAll(ctx, &pb.GetAllRequest{
 		PublicKey: s.key.PublicKey.N.Bytes(),
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service All: client: %w", err)
 	}
 
 	b := strings.Builder{}
@@ -143,14 +143,14 @@ func (s Service) All(ctx context.Context) (string, error) {
 // Delete - удалить запись по ID.
 func (s Service) Delete(ctx context.Context, id string) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Delete: context: %w", err)
 	}
 
 	getResp, err := s.c.Get(ctx, &pb.GetRequest{
 		Id: id,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Delete: client get: %w", err)
 	}
 
 	hash := sha256.Sum256(getResp.Data)
@@ -158,7 +158,7 @@ func (s Service) Delete(ctx context.Context, id string) (string, error) {
 
 	sign2, err := rsa.SignPKCS1v15(rand.Reader, s.key, crypto.SHA256, hash2[:])
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Delete: sign: %w", err)
 	}
 
 	_, err = s.c.Delete(ctx, &pb.DeleteRequest{
@@ -166,7 +166,7 @@ func (s Service) Delete(ctx context.Context, id string) (string, error) {
 		Sign: sign2,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service Service Delete: client delete: %w", err)
 	}
 
 	return fmt.Sprintf("Entry %s successfully deleted", id), nil
