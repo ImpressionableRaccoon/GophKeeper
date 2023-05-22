@@ -101,7 +101,7 @@ type textData struct {
 	Content string `json:"content"`
 }
 
-func newText(data []byte) (d *textData, err error) {
+func newText(data []byte) (d textData, err error) {
 	return d, json.Unmarshal(data, &d)
 }
 
