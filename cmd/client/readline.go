@@ -8,6 +8,13 @@ import (
 
 const defaultPrompt = "\033[31m»\033[0m "
 
+const versionTemplate = `Build info:
+
+Version: %s
+Date: %s
+Commit: %s
+`
+
 var (
 	l    *readline.Instance
 	line string
@@ -19,6 +26,7 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("add"),
 	readline.PcItem("all"),
 	readline.PcItem("delete"),
+	readline.PcItem("version"),
 )
 
 var readlineCfg = &readline.Config{
