@@ -77,6 +77,9 @@ func (s *ServerStorage) GetAll(ctx context.Context, publicKey []byte) ([]entry, 
 	defer cancel()
 
 	rows, err := s.db.QueryContext(ctx, `SELECT id, payload FROM entries WHERE public_key = $1`, publicKey)
+	if errors.Is(err, sql.ErrNoRows) {
+		return []entry{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("ServerStorage GetAll: query: %w", err)
 	}
