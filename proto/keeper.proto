@@ -41,9 +41,17 @@ message DeleteRequest {
   bytes sign = 2;
 }
 
+message UpdateRequest {
+  string id = 1;
+  bytes data = 2;
+  bytes sign_old = 3;
+  bytes sign_new = 4;
+}
+
 service Keeper {
   rpc Get(GetRequest) returns (GetResponse);
   rpc GetAll(GetAllRequest) returns (GetAllResponse);
   rpc Create(CreateRequest) returns (CreateResponse);
   rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
+  rpc Update(UpdateRequest) returns (google.protobuf.Empty);
 }

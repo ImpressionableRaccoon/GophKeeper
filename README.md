@@ -127,6 +127,22 @@ message DeleteRequest {
 }
 ```
 
+#### Обновить запись
+
+Принцип такой же, как и при создании, только дополнительно подписываем
+дважды хешированные старые данные ```SHA256(SHA256(data))```, как при удалении.
+
+```protobuf
+//rpc Update(UpdateRequest) returns (google.protobuf.Empty);
+
+message UpdateRequest {
+  string id = 1;
+  bytes data = 2;
+  bytes sign_old = 3;
+  bytes sign_new = 4;
+}
+```
+
 ### Аутентификация
 
 Аутентификацию производим с помощью RSASSA-PKCS1-V1_5-SIGN подписи SHA256 хеша данных:

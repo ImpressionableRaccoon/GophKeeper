@@ -171,3 +171,61 @@ func (s Service) Delete(ctx context.Context, id string) (string, error) {
 
 	return fmt.Sprintf("Entry %s successfully deleted", id), nil
 }
+
+// Update - обновить запись по ID.
+func (s Service) Update(ctx context.Context, line string, l *readline.Instance) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", fmt.Errorf("service Service Update: context: %w", err)
+	}
+
+	splitted := strings.Split(strings.TrimSpace(line), " ")
+	id := splitted[0]
+	t := splitted[1]
+
+	getResp, err := s.c.Get(ctx, &pb.GetRequest{
+		Id: id,
+	})
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: client get: %w", err)
+	}
+
+	oldHash := sha256.Sum256(getResp.Data)
+	oldHash2 := sha256.Sum256(oldHash[:])
+	oldSign, err := rsa.SignPKCS1v15(rand.Reader, s.key, crypto.SHA256, oldHash2[:])
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: sign old: %w", err)
+	}
+
+	e, err := dataverse.GenDatabaseEntry(t, l)
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: gen entry: %w", err)
+	}
+
+	data, err := json.Marshal(e)
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: marshal json: %w", err)
+	}
+
+	encrypted, err := rsa.EncryptPKCS1v15(rand.Reader, &s.key.PublicKey, data)
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: encrypt: %w", err)
+	}
+
+	newHash := sha256.Sum256(encrypted)
+	newSign, err := rsa.SignPKCS1v15(rand.Reader, s.key, crypto.SHA256, newHash[:])
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: sign new: %w", err)
+	}
+
+	_, err = s.c.Update(ctx, &pb.UpdateRequest{
+		Id:      id,
+		Data:    encrypted,
+		SignOld: oldSign,
+		SignNew: newSign,
+	})
+	if err != nil {
+		return "", fmt.Errorf("service Service Update: client update: %w", err)
+	}
+
+	return "update ok", nil
+}

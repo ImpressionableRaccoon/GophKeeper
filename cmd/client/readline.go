@@ -26,6 +26,7 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("add"),
 	readline.PcItem("all"),
 	readline.PcItem("delete"),
+	readline.PcItem("update"),
 	readline.PcItem("version"),
 )
 

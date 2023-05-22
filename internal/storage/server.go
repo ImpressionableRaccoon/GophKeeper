@@ -128,6 +128,19 @@ func (s *ServerStorage) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// Update - обновляем запись по ID.
+func (s *ServerStorage) Update(ctx context.Context, id uuid.UUID, data []byte) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctx, `UPDATE entries SET payload = $1 WHERE id = $2`, data, id)
+	if err != nil {
+		return fmt.Errorf("ServerStorage Update: exec: %w", err)
+	}
+
+	return nil
+}
+
 // Close - закрываем соединение с базой данных.
 func (s *ServerStorage) Close() error {
 	err := s.db.Close()

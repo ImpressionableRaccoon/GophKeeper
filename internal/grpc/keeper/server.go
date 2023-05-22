@@ -135,3 +135,48 @@ func (s server) Delete(ctx context.Context, req *pb.DeleteRequest) (*emptypb.Emp
 
 	return &emptypb.Empty{}, nil
 }
+
+// Update - обработчик для обновления записи.
+func (s server) Update(ctx context.Context, req *pb.UpdateRequest) (*emptypb.Empty, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "unable to parse UUID: %s", err)
+	}
+
+	entry, err := s.s.Get(ctx, id)
+	if errors.Is(err, storage.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, "entry not found")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "storage error on get: %s", err)
+	}
+
+	publicN := big.Int{}
+	publicN.SetBytes(entry.PublicKey)
+	public := rsa.PublicKey{
+		N: &publicN,
+		E: publicE,
+	}
+
+	oldHash := sha256.Sum256(entry.Payload)
+	oldHash2 := sha256.Sum256(oldHash[:])
+
+	err = rsa.VerifyPKCS1v15(&public, crypto.SHA256, oldHash2[:], req.SignOld)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "sign verify failed: %s", err)
+	}
+
+	newHash := sha256.Sum256(req.Data)
+
+	err = rsa.VerifyPKCS1v15(&public, crypto.SHA256, newHash[:], req.SignNew)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "sign verify failed: %s", err)
+	}
+
+	err = s.s.Update(ctx, id, req.Data)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "storage error on update: %s", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}

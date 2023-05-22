@@ -185,6 +185,16 @@ func work(ctx context.Context, s *service.Service) {
 				continue
 			}
 			fmt.Println(strings.TrimSpace(resp))
+		case line == "update":
+			fmt.Println("Usage: update {id} {type}")
+		case strings.HasPrefix(line, "update "):
+			resp, err = s.Update(ctx, line[7:], l)
+			if err != nil {
+				logger.Error("update method returned an error", zap.Error(err))
+				fmt.Printf("error: %s\n", err)
+				continue
+			}
+			fmt.Println(strings.TrimSpace(resp))
 		case line == "version":
 			fmt.Printf(versionTemplate, buildVersion, buildDate, buildCommit)
 		default:
