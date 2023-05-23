@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -49,6 +50,10 @@ func main() {
 	flag.StringVar(&tlsCert, "c", "", "TLS server cert path")
 	flag.StringVar(&tlsKey, "k", "", "TLS server key path")
 	flag.Parse()
+
+	if dsn == "" {
+		dsn = os.Getenv("POSTGRES_DSN")
+	}
 
 	if serverAddress == "" || dsn == "" {
 		flag.PrintDefaults()
