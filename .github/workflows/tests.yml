@@ -34,3 +34,111 @@ jobs:
           file: ./unit.txt
           flags: unit,${{ matrix.os }},go-${{ matrix.go-version }}
           name: unit
+  integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [ 1.18.x, 1.19.x, 1.20.x ]
+    concurrency:
+      group: integration-${{ github.ref }}-${{ matrix.go-version }}
+      cancel-in-progress: true
+    env:
+      OS: ubuntu-latest
+      GO: ${{ matrix.go-version }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: keeper
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      keeper-server:
+        image: cr.yandex/crpafo8ucg7rj71cei46/keeper
+        ports:
+          - 3200:3200
+        env:
+          POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/keeper?sslmode=disable
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      - name: Test
+        run: go test -race -coverpkg=./internal/... -coverprofile integration.txt -covermode atomic ./tests/integration/...
+        env:
+          SERVER_ADDRESS: :3200
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./integration.txt
+          flags: integration,go-${{ matrix.go-version }}
+          name: integration
+  integration-with-server-coverage:
+    concurrency:
+      group: integration-with-server-coverage-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      OS: ubuntu-latest
+      GO: 1.20.x
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: keeper
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20.x
+          cache: true
+      - name: Generate certificates
+        run: make genCert
+      - name: Build keeper server
+        run: |
+          cd cmd/server
+          go build -cover -o ../../keeperserver
+      - name: Run keeper server
+        run: |
+          mkdir server-coverage
+          ./keeperserver -c cert/server-cert.pem -k cert/server-key.pem -d "postgres://postgres:postgres@localhost:5432/keeper?sslmode=disable" &
+        env:
+          GOCOVERDIR: server-coverage
+      - name: Test
+        run: go test -race -coverpkg=./internal/... -coverprofile integration.txt -covermode atomic ./tests/integration/...
+        env:
+          SERVER_ADDRESS: :3200
+      - name: Shutdown server
+        run: |
+          pkill -SIGTERM keeperserver
+          go tool covdata textfmt -i server-coverage -o server-coverage.txt
+      - name: Upload client coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./integration.txt
+          flags: integration-server
+          name: integration-server
+      - name: Upload server coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./server-coverage.txt
+          flags: integration-server
+          name: integration-server
