@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -179,6 +180,9 @@ func (s Service) Update(ctx context.Context, line string, l *readline.Instance) 
 	}
 
 	splitted := strings.Split(strings.TrimSpace(line), " ")
+	if len(splitted) < 2 {
+		return "", errors.New("service Service Update: wrong line")
+	}
 	id := splitted[0]
 	t := splitted[1]
 
