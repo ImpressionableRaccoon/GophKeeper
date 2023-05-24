@@ -1,10 +1,15 @@
 package dataverse
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/chzyer/readline"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,9 +109,214 @@ func TestGenDatabaseEntry(t *testing.T) {
 		_, err := GenDatabaseEntry("unknown", nil)
 		require.Error(t, err)
 	})
+
+	t.Run("test all formats", func(t *testing.T) {
+		binaryFileName := fmt.Sprintf("%s.bin", uuid.New().String())
+		binaryContent := []byte{1, 2, 3, 4, 5, 100, 101, 102, 103, 104}
+		err := os.WriteFile(binaryFileName, binaryContent, 0o600)
+		assert.NoError(t, err)
+
+		for _, tt := range []struct {
+			t       entryType
+			input   []string
+			res     Entry
+			wantErr bool
+		}{
+			{
+				t: textEntry,
+				input: []string{
+					"name",
+					"content",
+				},
+				res: textData{
+					Name:    "name",
+					Content: "content",
+				},
+			},
+			{
+				t: textEntry,
+				input: []string{
+					"name",
+				},
+				wantErr: true,
+			},
+			{
+				t:       textEntry,
+				input:   []string{},
+				wantErr: true,
+			},
+			{
+				t: authEntry,
+				input: []string{
+					"name",
+					"username",
+					"password",
+				},
+				res: authData{
+					Name:     "name",
+					Username: "username",
+					Password: "password",
+				},
+			},
+			{
+				t: authEntry,
+				input: []string{
+					"name",
+					"username",
+				},
+				wantErr: true,
+			},
+			{
+				t: authEntry,
+				input: []string{
+					"name",
+				},
+				wantErr: true,
+			},
+			{
+				t:       authEntry,
+				input:   []string{},
+				wantErr: true,
+			},
+			{
+				t: cardEntry,
+				input: []string{
+					"name",
+					"number",
+					"date",
+					"cvc",
+					"holder",
+				},
+				res: cardData{
+					Name:   "name",
+					Number: "number",
+					Date:   "date",
+					CVC:    "cvc",
+					Holder: "holder",
+				},
+			},
+			{
+				t: cardEntry,
+				input: []string{
+					"name",
+					"number",
+					"date",
+					"cvc",
+				},
+				wantErr: true,
+			},
+			{
+				t: cardEntry,
+				input: []string{
+					"name",
+					"number",
+					"date",
+				},
+				wantErr: true,
+			},
+			{
+				t: cardEntry,
+				input: []string{
+					"name",
+					"number",
+				},
+				wantErr: true,
+			},
+			{
+				t: cardEntry,
+				input: []string{
+					"name",
+				},
+				wantErr: true,
+			},
+			{
+				t:       cardEntry,
+				input:   []string{},
+				wantErr: true,
+			},
+			{
+				t: binaryEntry,
+				input: []string{
+					"name",
+					binaryFileName,
+				},
+				res: binaryData{
+					Name:     "name",
+					Filename: binaryFileName,
+					Content:  binaryContent,
+				},
+			},
+			{
+				t: binaryEntry,
+				input: []string{
+					"name",
+				},
+				wantErr: true,
+			},
+			{
+				t:       binaryEntry,
+				input:   []string{},
+				wantErr: true,
+			},
+		} {
+			testName := string(tt.t)
+			if tt.wantErr {
+				testName += " want error"
+			}
+
+			t.Run(testName, func(t *testing.T) {
+				b := &bytes.Buffer{}
+				for _, l := range tt.input {
+					_, _ = fmt.Fprintf(b, "%s\n", strings.TrimSpace(l))
+				}
+
+				var l *readline.Instance
+				l, err = readline.NewEx(&readline.Config{
+					Stdin: io.NopCloser(b),
+				})
+				require.NoError(t, err)
+
+				var e DatabaseEntry
+				e, err = GenDatabaseEntry(string(tt.t), l)
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+
+					var m []byte
+					m, err = tt.res.Marshal()
+					require.NoError(t, err)
+
+					assert.Equal(t,
+						DatabaseEntry{
+							Type: string(tt.t),
+							Data: m,
+						},
+						e,
+					)
+				}
+			})
+		}
+	})
+
+	t.Run("binary file not found", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		b.Write([]byte("name\n"))
+		b.Write([]byte("filenotexists\n"))
+
+		l, err := readline.NewEx(&readline.Config{
+			Stdin: io.NopCloser(b),
+		})
+		require.NoError(t, err)
+
+		_, err = GenDatabaseEntry(string(binaryEntry), l)
+		require.Error(t, err)
+	})
 }
 
 func TestEntry(t *testing.T) {
+	binaryFileName := fmt.Sprintf("%s.bin", uuid.New().String())
+
 	//nolint: lll
 	tests := []struct {
 		name          string
@@ -157,13 +367,17 @@ func TestEntry(t *testing.T) {
 			name: "binary entry",
 			entry: binaryData{
 				Name:     "security key",
-				Filename: "key.bin",
+				Filename: binaryFileName,
 				Content:  []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 			},
 			typeResult:    "BinaryFile",
-			nameResult:    "security key (key.bin)",
-			contentResult: "File `key.bin` successfully saved",
-			marshalResult: []byte(`{"name":"security key","filename":"key.bin","content":"AQIDBAUGBwgJCg=="}`),
+			nameResult:    fmt.Sprintf("security key (%s)", binaryFileName),
+			contentResult: fmt.Sprintf("File `%s` successfully saved", binaryFileName),
+			marshalResult: []byte(
+				fmt.Sprintf(`{"name":"security key","filename":"%s","content":"AQIDBAUGBwgJCg=="}`,
+					binaryFileName,
+				),
+			),
 		},
 	}
 	for _, tt := range tests {
@@ -190,9 +404,13 @@ func TestBinaryGetContent(t *testing.T) {
 		Content:  []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 	}
 
-	result := fmt.Sprintf("File `%s` successfully saved", entry.Filename)
-	exists := fmt.Sprintf("ERROR: file `%s` already exists", entry.Filename)
+	t.Run("ok", func(t *testing.T) {
+		result := fmt.Sprintf("File `%s` successfully saved", entry.Filename)
+		assert.Equal(t, result, entry.GetContent())
+	})
 
-	assert.Equal(t, result, entry.GetContent())
-	assert.Equal(t, exists, entry.GetContent())
+	t.Run("already exists", func(t *testing.T) {
+		exists := fmt.Sprintf("ERROR: file `%s` already exists", entry.Filename)
+		assert.Equal(t, exists, entry.GetContent())
+	})
 }

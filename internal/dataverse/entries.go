@@ -298,7 +298,7 @@ func genBinary(l *readline.Instance) (d binaryData, err error) {
 
 	d.Content, err = os.ReadFile(d.Filename)
 	if err != nil {
-		return binaryData{}, fmt.Errorf("dataverse genBinary: readline: %w", err)
+		return binaryData{}, fmt.Errorf("dataverse genBinary: read file: %w", err)
 	}
 
 	return d, nil
