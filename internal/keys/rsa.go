@@ -12,10 +12,9 @@ import (
 	"os"
 )
 
-const (
-	keySize = 4096
-	keyType = "RSA PRIVATE KEY"
-)
+var keySize = 4096
+
+const keyType = "RSA PRIVATE KEY"
 
 // GenRSAKey генерирует и сохраняет RSA-ключ в pem-файл.
 func GenRSAKey(ctx context.Context) (_ *rsa.PrivateKey, fileName string, _ error) {
