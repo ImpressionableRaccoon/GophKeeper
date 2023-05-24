@@ -99,6 +99,13 @@ func TestParseEntry(t *testing.T) {
 	}
 }
 
+func TestGenDatabaseEntry(t *testing.T) {
+	t.Run("wrong entry type", func(t *testing.T) {
+		_, err := GenDatabaseEntry("unknown", nil)
+		require.Error(t, err)
+	})
+}
+
 func TestEntry(t *testing.T) {
 	//nolint: lll
 	tests := []struct {
