@@ -61,9 +61,10 @@ func main() {
 	flag.Parse()
 
 	if serverAddress == "" {
-		msg := "server address not defined, run in offline mode (use -help for more info)"
+		msg := "server address not defined, run in offline mode not supported (use -help for more info)"
 		logger.Warn(msg)
 		fmt.Println(msg)
+		return
 	}
 
 	var c *keeper.Client
@@ -98,7 +99,7 @@ func main() {
 	}()
 
 	if keyPath == "" {
-		l.SetPrompt("Are you want to generate a new key [Y/n]: ")
+		l.SetPrompt("Do you want to generate a new key [Y/n]: ")
 
 		line, err = l.Readline()
 		if err != nil || (err == nil && strings.ToLower(line) != "y" && line != "") {
