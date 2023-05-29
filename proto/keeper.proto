@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package GophKeeper;
+
+option go_package = "github.com/ImpressionableRaccoon/GophKeeper";
+
+import "google/protobuf/empty.proto";
+
+message GetRequest {
+  string id = 1;
+}
+
+message GetResponse {
+  bytes data = 1;
+}
+
+message GetAllRequest {
+  bytes public_key = 1;
+}
+
+message GetAllResponse {
+  message Entry {
+    string id = 1;
+    bytes data = 2;
+  }
+  repeated Entry entries = 1;
+}
+
+message CreateRequest {
+  bytes public_key = 1;
+  bytes data = 2;
+  bytes sign = 3;
+}
+
+message CreateResponse {
+  string id = 1;
+}
+
+message DeleteRequest {
+  string id = 1;
+  bytes sign = 2;
+}
+
+message UpdateRequest {
+  string id = 1;
+  bytes data = 2;
+  bytes sign_old = 3;
+  bytes sign_new = 4;
+}
+
+service Keeper {
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc GetAll(GetAllRequest) returns (GetAllResponse);
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
+  rpc Update(UpdateRequest) returns (google.protobuf.Empty);
+}
